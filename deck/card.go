@@ -135,7 +135,7 @@ func WithShuffle() option {
 	}
 }
 
-// WithFilter returns the cards without the filtered cards by the given function.
+// WithFilter returns a new filtered deck, removing all the cards that returns true by the function cardFilter.
 func WithFilter(cardFilter func(card Card) bool) option {
 	return func(cards []Card) []Card {
 		var filteredDeck []Card
@@ -157,4 +157,21 @@ func WithMultipleDeck(decks ...[]Card) option {
 		}
 		return multipleDeck
 	}
+}
+
+func WithMultipleDeckSize(size int) option {
+	return func(c []Card) []Card {
+		var multipleDeck []Card
+		for range size {
+			multipleDeck = append(multipleDeck, *New()...)
+		}
+		return multipleDeck
+	}
+}
+
+func PopCard(cards *[]Card) Card {
+	cardsLen := len(*cards)
+	cardOut := (*cards)[cardsLen-1]
+	*cards = (*cards)[:cardsLen-1]
+	return cardOut
 }
