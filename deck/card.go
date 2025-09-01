@@ -15,9 +15,8 @@ const (
 
 // Cards are the structures that composes the deck.
 type Card struct {
-	Suit       uint8
-	Value      uint16
-	TrumpValue uint8
+	Suit  uint8
+	Value uint16
 }
 
 type option func([]Card) []Card
