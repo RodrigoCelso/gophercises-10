@@ -2,6 +2,7 @@ package deck
 
 import (
 	"fmt"
+	"math/bits"
 	"math/rand"
 	"sort"
 	"strings"
@@ -19,7 +20,9 @@ type Card struct {
 	Value uint16
 }
 
-type option func([]Card) []Card
+type Deck []Card
+
+type option func(Deck) Deck
 
 var cardSuitMap = map[uint8]string{
 	uint8(1 << 0): "Spade",
@@ -81,8 +84,8 @@ func (c Card) String() string {
 }
 
 // New allocates a new slice of Card given the n Options.
-func New(opts ...option) *[]Card {
-	var deck []Card
+func New(opts ...option) *Deck {
+	var deck Deck
 	for suit := range CARD_SUITS_SIZE {
 		for value := range CARD_VALUES_SIZE {
 			newCardBW := Card{Value: 1 << value, Suit: 1 << suit}
@@ -97,7 +100,7 @@ func New(opts ...option) *[]Card {
 
 // WithSort returns the cards sorted by suit.
 func WithSort() option {
-	return func(cb []Card) []Card {
+	return func(cb Deck) Deck {
 		sort.Slice(cb, func(i, j int) bool {
 			return cb[i].Suit < cb[j].Suit
 		})
@@ -106,8 +109,8 @@ func WithSort() option {
 }
 
 // WithSortFunc returns the cards sorted by the given function.
-func WithSortFunc(less func(cards []Card) func(i, j int) bool) option {
-	return func(cb []Card) []Card {
+func WithSortFunc(less func(cards Deck) func(i, j int) bool) option {
+	return func(cb Deck) Deck {
 		sort.Slice(cb, less(cb))
 		return cb
 	}
@@ -115,7 +118,7 @@ func WithSortFunc(less func(cards []Card) func(i, j int) bool) option {
 
 // WithJoker appends the given quantity of Joker cards.
 func WithJoker(quantity int) option {
-	return func(c []Card) []Card {
+	return func(c Deck) Deck {
 		for idx := 0; idx < quantity; idx++ {
 			card := Card{Suit: uint8(1 << 4), Value: uint16(0)}
 			c = append(c, card)
@@ -126,7 +129,7 @@ func WithJoker(quantity int) option {
 
 // WithShuffle uses the rand standard package and returns the shuffled cards.
 func WithShuffle() option {
-	return func(c []Card) []Card {
+	return func(c Deck) Deck {
 		rand.Shuffle(len(c), func(i, j int) {
 			c[i], c[j] = c[j], c[i]
 		})
@@ -136,8 +139,8 @@ func WithShuffle() option {
 
 // WithFilter returns a new filtered deck, removing all the cards that returns true by the function cardFilter.
 func WithFilter(cardFilter func(card Card) bool) option {
-	return func(cards []Card) []Card {
-		var filteredDeck []Card
+	return func(cards Deck) Deck {
+		var filteredDeck Deck
 		for _, card := range cards {
 			if !cardFilter(card) {
 				filteredDeck = append(filteredDeck, card)
@@ -148,9 +151,9 @@ func WithFilter(cardFilter func(card Card) bool) option {
 }
 
 // WithMultipleDeck returns a new deck composed by the given decks.
-func WithMultipleDeck(decks ...[]Card) option {
-	return func(c []Card) []Card {
-		var multipleDeck []Card
+func WithMultipleDeck(decks ...Deck) option {
+	return func(c Deck) Deck {
+		var multipleDeck Deck
 		for _, deck := range decks {
 			multipleDeck = append(multipleDeck, deck...)
 		}
@@ -159,8 +162,8 @@ func WithMultipleDeck(decks ...[]Card) option {
 }
 
 func WithMultipleDeckSize(size int) option {
-	return func(c []Card) []Card {
-		var multipleDeck []Card
+	return func(c Deck) Deck {
+		var multipleDeck Deck
 		for range size {
 			multipleDeck = append(multipleDeck, *New()...)
 		}
@@ -168,9 +171,36 @@ func WithMultipleDeckSize(size int) option {
 	}
 }
 
-func PopCard(cards *[]Card) Card {
+func PopCard(cards *Deck) Card {
 	cardsLen := len(*cards)
 	cardOut := (*cards)[cardsLen-1]
 	*cards = (*cards)[:cardsLen-1]
 	return cardOut
+}
+
+func (d Deck) Shuffle() Deck {
+	rand.Shuffle(len(d), func(i, j int) {
+		d[i], d[j] = d[j], d[i]
+	})
+	return d
+}
+
+func (c *Card) BJScore() (int, bool) {
+	if c.Value == 0 {
+		return 0, false
+	}
+
+	var isAce bool
+	var scoreValue int
+	cardValue := bits.TrailingZeros16(c.Value) + 1
+	switch cardValue {
+	case 1:
+		isAce = true
+		scoreValue += 11
+	case 11, 12, 13:
+		scoreValue += 10
+	default:
+		scoreValue += cardValue
+	}
+	return scoreValue, isAce
 }

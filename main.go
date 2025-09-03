@@ -9,42 +9,99 @@ import (
 	"github.com/RodrigoCelso/gophercises-10/player"
 )
 
+const FOCUS_TIME = 2 * time.Second
+
 func main() {
-	game := game.Game{Shoe: *deck.New(deck.WithMultipleDeckSize(4), deck.WithShuffle()), Dealer: player.New(), Players: []*player.Player{player.New()}}
+	game := initGame()
+	round(&game)
+}
+
+func initGame() game.Game {
+	game := game.Game{Shoe: *deck.New(deck.WithMultipleDeckSize(4), deck.WithShuffle()), Dealer: player.NewDealer(), Players: []*player.Player{player.New("Player")}}
 	game.StartRound()
-	fmt.Println("My first card")
-	userPlay(&game, game.Players[0])
-	dealerPlay(&game, game.Dealer)
+
+	dealerIntro(&game)
+	return game
 }
 
-func userPlay(game *game.Game, user *player.Player) {
+func dealerIntro(game *game.Game) {
+	fmt.Println(game.Dealer.Name, "- My first card:", game.Dealer.Hand[0])
+	pScore, _ := game.Dealer.Hand[0].BJScore()
+	fmt.Print("Partial score: ", pScore, "\n\n")
+}
+
+func userPlay(game *game.Game, user *player.Player) int {
 	var userChoice int
+	score := user.Score()
+	fmt.Println(user)
+
 	fmt.Println("What are you going to do?")
-	fmt.Println("1. Hit")
-	fmt.Println("2. Stand")
-	fmt.Scanf("%d", &userChoice)
-	fmt.Println(userChoice)
-	switch userChoice {
-	case 1:
-		game.Hit(user)
-	case 2:
-		game.Stand(user)
-	default:
+	for {
+		fmt.Println("1. Hit")
+		fmt.Println("2. Stand")
+		fmt.Scan(&userChoice)
+
+		if userChoice == 1 {
+			card := game.Hit(user)
+			score = user.Score()
+			if score > 21 {
+				fmt.Println("Card hitted:", card)
+				break
+			}
+			fmt.Println("Card hitted:", card)
+			fmt.Println("Current Score:", score)
+			time.Sleep(FOCUS_TIME)
+			continue
+		}
+
+		if userChoice == 2 {
+			fmt.Print("Stand: ", score, "\n\n")
+			time.Sleep(FOCUS_TIME)
+			return score
+		}
+
 		fmt.Println("Invalid action")
+		return score
 	}
-	fmt.Println("Your Score:")
+
+	fmt.Print(user.Name, " - Score: ", score, "\n\n")
+	time.Sleep(FOCUS_TIME)
+	return score
 }
 
-func dealerPlay(game *game.Game, dealer *player.Player) {
-	fmt.Println("My second card:", dealer.Hand[1])
+func dealerPlay(game *game.Game, dealer *player.Player) int {
 	score := dealer.Score()
+	fmt.Println(dealer)
 	fmt.Println("Score: ", score)
 	time.Sleep(2 * time.Second)
 	for score <= 16 {
 		newCard := game.Hit(dealer)
 		score = dealer.Score()
-		fmt.Println("Hit:", newCard, "Score:", score)
-		time.Sleep(2 * time.Second)
+		fmt.Println("Hit:", newCard, "\nScore:", score)
+		time.Sleep(FOCUS_TIME)
 	}
 	fmt.Println("Stand:", score)
+	return score
+}
+
+func round(game *game.Game) {
+	scorePlayers := make(map[string]int)
+	for playersLen := range game.Players {
+		scorePlayers[game.Players[playersLen].Name] = userPlay(game, game.Players[playersLen])
+	}
+	scoreDealer := dealerPlay(game, game.Dealer)
+	for name, score := range scorePlayers {
+		if scoreDealer > score {
+			fmt.Println(game.Dealer.Name, "won against", name)
+			return
+		}
+		if scoreDealer == score {
+			fmt.Println(game.Dealer.Name, "and", name, "tied")
+			return
+		}
+		if scoreDealer < score {
+			fmt.Println(name, "won against", game.Dealer.Name)
+			return
+		}
+	}
 }

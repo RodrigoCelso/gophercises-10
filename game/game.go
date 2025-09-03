@@ -6,8 +6,8 @@ import (
 )
 
 type Game struct {
-	Shoe        []deck.Card
-	DiscardTray []deck.Card
+	Shoe        deck.Deck
+	DiscardTray deck.Deck
 	Dealer      *player.Player
 	Players     []*player.Player
 }
@@ -22,9 +22,14 @@ func (g *Game) StartRound() {
 }
 
 func (g *Game) Hit(p *player.Player) deck.Card {
-	shoeLen := len(g.Shoe)
-	hitCard := g.Shoe[shoeLen-1]
-	g.Shoe = g.Shoe[:shoeLen-1]
+	shoeLast := len(g.Shoe) - 1
+	if shoeLast < 5 {
+		g.Shoe = append(g.Shoe, g.DiscardTray...)
+		g.DiscardTray = deck.Deck{}
+		g.Shoe = g.Shoe.Shuffle()
+	}
+	hitCard := g.Shoe[shoeLast]
+	g.Shoe = g.Shoe[:shoeLast]
 	p.Hand = append(p.Hand, hitCard)
 	return hitCard
 }
