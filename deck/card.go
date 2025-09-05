@@ -22,6 +22,14 @@ type Card struct {
 
 type Deck []Card
 
+func (d Deck) String() string {
+	var cards string
+	for _, card := range d {
+		cards += fmt.Sprintln(card)
+	}
+	return cards
+}
+
 type option func(Deck) Deck
 
 var cardSuitMap = map[uint8]string{
@@ -185,7 +193,12 @@ func (d Deck) Shuffle() Deck {
 	return d
 }
 
-func (c *Card) BJScore() (int, bool) {
+func (c *Card) BlackjackScore() int {
+	score, _ := c.BlackjackScoreWithAce()
+	return score
+}
+
+func (c *Card) BlackjackScoreWithAce() (int, bool) {
 	if c.Value == 0 {
 		return 0, false
 	}

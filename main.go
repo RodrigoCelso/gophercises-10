@@ -11,97 +11,142 @@ import (
 
 const FOCUS_TIME = 2 * time.Second
 
+var playerMaxScore int
+
 func main() {
-	game := initGame()
-	round(&game)
-}
+	// New round created
+	newRound := game.New(1)
+	playerMaxScore = 0
 
-func initGame() game.Game {
-	game := game.Game{Shoe: *deck.New(deck.WithMultipleDeckSize(4), deck.WithShuffle()), Dealer: player.NewDealer(), Players: []*player.Player{player.New("Player")}}
-	game.StartRound()
-
-	dealerIntro(&game)
-	return game
-}
-
-func dealerIntro(game *game.Game) {
-	fmt.Println(game.Dealer.Name, "- My first card:", game.Dealer.Hand[0])
-	pScore, _ := game.Dealer.Hand[0].BJScore()
-	fmt.Print("Partial score: ", pScore, "\n\n")
-}
-
-func userPlay(game *game.Game, user *player.Player) int {
-	var userChoice int
-	score := user.Score()
-	fmt.Println(user)
-
-	fmt.Println("What are you going to do?")
-	for {
-		fmt.Println("1. Hit")
-		fmt.Println("2. Stand")
-		fmt.Scan(&userChoice)
-
-		if userChoice == 1 {
-			card := game.Hit(user)
-			score = user.Score()
-			if score > 21 {
-				fmt.Println("Card hitted:", card)
-				break
-			}
-			fmt.Println("Card hitted:", card)
-			fmt.Println("Current Score:", score)
-			time.Sleep(FOCUS_TIME)
-			continue
-		}
-
-		if userChoice == 2 {
-			fmt.Print("Stand: ", score, "\n\n")
-			time.Sleep(FOCUS_TIME)
-			return score
-		}
-
-		fmt.Println("Invalid action")
-		return score
-	}
-
-	fmt.Print(user.Name, " - Score: ", score, "\n\n")
+	// Deal cards
+	fmt.Print("Welcome to the blackjack game, i'm your dealer\ndealing cards...\n\n")
 	time.Sleep(FOCUS_TIME)
-	return score
-}
+	dealCards(newRound.Players, newRound.Dealer, &newRound.Shoe)
 
-func dealerPlay(game *game.Game, dealer *player.Player) int {
-	score := dealer.Score()
-	fmt.Println(dealer)
-	fmt.Println("Score: ", score)
-	time.Sleep(2 * time.Second)
-	for score <= 16 {
-		newCard := game.Hit(dealer)
-		score = dealer.Score()
-		fmt.Println("Hit:", newCard, "\nScore:", score)
+	// Dealer reveals first card
+	fmt.Println("this is my first card:")
+	dealerFlipCard(newRound.Dealer, 1)
+	time.Sleep(FOCUS_TIME)
+
+	// Players turn
+	fmt.Println("this is your hand:")
+	for _, p := range newRound.Players {
+		fmt.Println(p)
 		time.Sleep(FOCUS_TIME)
 	}
-	fmt.Println("Stand:", score)
-	return score
+	playersPlay(newRound.Players, &newRound.Shoe)
+	time.Sleep(FOCUS_TIME)
+
+	// Dealer reveals second card
+	fmt.Println("this is my second card:")
+	dealerFlipCard(newRound.Dealer, 2)
+	fmt.Println("my current hand is:\n", newRound.Dealer)
+	time.Sleep(FOCUS_TIME)
+
+	// Dealer turn
+	dealerPlay(newRound.Dealer, &newRound.Shoe)
+	time.Sleep(FOCUS_TIME)
+
+	// Decide winners
+	compareCards(newRound.Players, newRound.Dealer)
 }
 
-func round(game *game.Game) {
-	scorePlayers := make(map[string]int)
-	for playersLen := range game.Players {
-		scorePlayers[game.Players[playersLen].Name] = userPlay(game, game.Players[playersLen])
+func dealCards(players []*player.Player, dealer *player.Player, shoe *deck.Deck) {
+	for _, p := range players {
+		p.Hit(shoe)
+		p.Hit(shoe)
+		pScore := p.Score()
+		if pScore == 21 {
+			// Natural Blackjack
+			p.State = player.Blackjack
+			playerMaxScore = pScore
+		}
 	}
-	scoreDealer := dealerPlay(game, game.Dealer)
-	for name, score := range scorePlayers {
-		if scoreDealer > score {
-			fmt.Println(game.Dealer.Name, "won against", name)
+	dealer.Hit(shoe)
+	dealer.Hit(shoe)
+	if dealer.Score() == 21 {
+		// Natural Blackjack
+		dealer.State = player.Blackjack
+	}
+}
+
+func dealerFlipCard(dealer *player.Player, cardNumber int) {
+	c := dealer.Hand[cardNumber-1]
+	fmt.Print(c, " - Value: ", c.BlackjackScore(), "\n\n")
+}
+
+func playersPlay(players []*player.Player, shoe *deck.Deck) {
+	for _, p := range players {
+		for {
+			fmt.Println(p.Name, "your current score is:", p.Score())
+			fmt.Println("Would you like to Hit or Stand?")
+			fmt.Println("0. Your cards\n1. Hit\n2. Stand")
+
+			playerChoice := -1
+			fmt.Scanf("%d\n", &playerChoice)
+
+			if playerChoice == 0 {
+				fmt.Println(p.Hand)
+				continue
+			} else if playerChoice == 1 {
+				cardHitted := p.Hit(shoe)
+				fmt.Print("\nYou hitted: ", cardHitted, " - Value: ", cardHitted.BlackjackScore(), "\n\n")
+				if p.Score() > 21 {
+					fmt.Print("BUSTED! ", p.Score(), "\n")
+					p.Hand = []deck.Card{}
+					break
+				}
+				pScore := p.Score()
+				if pScore > playerMaxScore {
+					playerMaxScore = pScore
+				}
+			} else if playerChoice == 2 {
+				break
+			} else {
+				// invalid command
+				fmt.Println("Invalid command, please try again.")
+				continue
+			}
+		}
+		fmt.Print("Final Score: ", p.Score(), "\n\n")
+	}
+}
+
+func dealerPlay(dealer *player.Player, shoe *deck.Deck) {
+	score := dealer.Score()
+	for score < 17 || score < playerMaxScore {
+		cardHitted := dealer.Hit(shoe)
+		score = dealer.Score()
+		fmt.Print("\nI hitted: ", cardHitted, " - Value: ", cardHitted.BlackjackScore(), "\n")
+		fmt.Print("My current score: ", score, "\n\n")
+		time.Sleep(FOCUS_TIME)
+		if score > playerMaxScore {
+			break
+		}
+	}
+	if score > 21 {
+		fmt.Print("Dealer BUSTED ", dealer.Score(), "\n")
+		dealer.Hand = []deck.Card{}
+	}
+}
+
+func compareCards(players []*player.Player, dealer *player.Player) {
+	dealerScore := dealer.Score()
+	for _, p := range players {
+		pScore := p.Score()
+		if (pScore == dealerScore) || (p.State == dealer.State && !(p.State == player.Default && dealer.State == player.Default)) {
+			// tie
+			fmt.Println(dealer.Name, "and", p.Name, "tied")
 			return
 		}
-		if scoreDealer == score {
-			fmt.Println(game.Dealer.Name, "and", name, "tied")
+
+		if dealer.State == player.Blackjack || dealerScore > pScore {
+			// dealer won
+			fmt.Println(dealer.Name, "won against", p.Name)
 			return
 		}
-		if scoreDealer < score {
-			fmt.Println(name, "won against", game.Dealer.Name)
-			return
-		}
+
+		// dealer lost
+		fmt.Println(p.Name, "won against", dealer.Name)
 	}
 }
