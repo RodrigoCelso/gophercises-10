@@ -1,4 +1,4 @@
-package player
+package bjackplayer
 
 import (
 	"fmt"
@@ -51,7 +51,7 @@ func (p *Player) String() string {
 	for _, card := range p.Hand {
 		profile += fmt.Sprintln("-", card)
 	}
-	profile += fmt.Sprintln("Score:", p.Score())
+	profile += fmt.Sprint("Score:", p.Score())
 	return profile
 }
 
