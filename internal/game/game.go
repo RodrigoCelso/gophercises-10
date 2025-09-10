@@ -3,15 +3,16 @@ package game
 import (
 	"strconv"
 
-	"github.com/RodrigoCelso/gophercises-10/bjackplayer"
-	"github.com/RodrigoCelso/gophercises-10/deck"
+	"github.com/RodrigoCelso/gophercises-10/internal/bjackplayer"
+	"github.com/RodrigoCelso/gophercises-10/internal/deck"
 )
 
 type Game struct {
-	Shoe        deck.Deck
-	DiscardTray deck.Deck
-	Dealer      *bjackplayer.Player
-	Players     []*bjackplayer.Player
+	Shoe           deck.Deck
+	DiscardTray    deck.Deck
+	Dealer         *bjackplayer.Player
+	Players        []*bjackplayer.Player
+	PlayerMaxScore int
 }
 
 func New(playerQuantity int) *Game {

@@ -3,7 +3,7 @@ package bjackplayer
 import (
 	"fmt"
 
-	"github.com/RodrigoCelso/gophercises-10/deck"
+	"github.com/RodrigoCelso/gophercises-10/internal/deck"
 )
 
 type PlayerState uint8
