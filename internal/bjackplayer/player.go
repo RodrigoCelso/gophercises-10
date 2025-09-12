@@ -14,21 +14,19 @@ const (
 )
 
 type Player struct {
-	Name  string
-	Hand  deck.Deck
-	Chips int
-	Bet   int
-	State PlayerState
+	Name      string
+	Hand      deck.Deck
+	SplitHand deck.Deck
+	Chips     int
+	Bet       int
+	State     PlayerState
+	Playable  bool
 }
 
-func New(name string) *Player {
-	return &Player{Name: name}
-}
-
-func (p *Player) Score() int {
+func Score(hand deck.Deck) int {
 	var aces uint8
 	var scoreValue int
-	for _, card := range p.Hand {
+	for _, card := range hand {
 		cardValue, isAce := card.BlackjackScoreWithAce()
 		scoreValue += cardValue
 		if isAce {
@@ -47,11 +45,22 @@ func (p *Player) Score() int {
 }
 
 func (p *Player) String() string {
-	profile := fmt.Sprint(p.Name, ": Cards\n")
+	profile := fmt.Sprint(p.Name, ":\nHand cards\n")
 	for _, card := range p.Hand {
 		profile += fmt.Sprintln("-", card)
 	}
-	profile += fmt.Sprint("Score:", p.Score())
+	if p.SplitHand != nil {
+		profile += fmt.Sprintln("\nSecond hand cards")
+		for _, card := range p.SplitHand {
+			profile += fmt.Sprintln("-", card)
+		}
+	}
+	profile += fmt.Sprint("Hand score:", Score(p.Hand))
+
+	if p.SplitHand != nil {
+		profile += fmt.Sprint("\nSecond hand score:", Score(p.SplitHand))
+	}
+
 	return profile
 }
 

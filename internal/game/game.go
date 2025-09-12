@@ -15,10 +15,22 @@ type Game struct {
 	PlayerMaxScore int
 }
 
-func New(playerQuantity int) *Game {
+func New(playerQuantity int, users []*bjackplayer.Player) *Game {
 	var players []*bjackplayer.Player
+	players = append(players, users...)
+
 	for idx := range playerQuantity {
-		players = append(players, bjackplayer.New("Player"+strconv.Itoa(idx+1)))
+		players = append(players,
+			&bjackplayer.Player{
+				Name:     "Player" + strconv.Itoa(idx+1+len(users)),
+				Playable: false,
+			},
+		)
 	}
-	return &Game{Shoe: *deck.New(deck.WithMultipleDeckSize(4), deck.WithShuffle()), Dealer: bjackplayer.New("Dealer"), Players: players}
+
+	return &Game{
+		Shoe:    *deck.New(deck.WithMultipleDeckSize(4), deck.WithShuffle()),
+		Dealer:  &bjackplayer.Player{Name: "Dealer", Playable: false},
+		Players: players,
+	}
 }

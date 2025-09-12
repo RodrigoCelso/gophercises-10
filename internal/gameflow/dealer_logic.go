@@ -9,11 +9,11 @@ import (
 	"github.com/RodrigoCelso/gophercises-10/internal/game"
 )
 
-func DealCards(round *game.Game) {
+func dealCards(round *game.Game) {
 	for _, p := range round.Players {
 		p.Hit(&round.Shoe)
 		p.Hit(&round.Shoe)
-		pScore := p.Score()
+		pScore := bjackplayer.Score(p.Hand)
 		if pScore == 21 {
 			// Natural Blackjack
 			p.State = bjackplayer.Blackjack
@@ -24,21 +24,21 @@ func DealCards(round *game.Game) {
 	}
 	round.Dealer.Hit(&round.Shoe)
 	round.Dealer.Hit(&round.Shoe)
-	if round.Dealer.Score() == 21 {
+	if bjackplayer.Score(round.Dealer.Hand) == 21 {
 		// Natural Blackjack
 		round.Dealer.State = bjackplayer.Blackjack
 	}
 }
 
-func FlipCard(dealer *bjackplayer.Player, cardNumber int) *deck.Card {
+func flipCard(dealer *bjackplayer.Player, cardNumber int) *deck.Card {
 	return &dealer.Hand[cardNumber-1]
 }
 
-func DealerPlay(round *game.Game) {
-	score := round.Dealer.Score()
+func dealerPlay(round *game.Game) {
+	score := bjackplayer.Score(round.Dealer.Hand)
 	for score < 17 || (score < round.PlayerMaxScore && len(round.Players) == 1) {
 		cardHitted := round.Dealer.Hit(&round.Shoe)
-		score = round.Dealer.Score()
+		score = bjackplayer.Score(round.Dealer.Hand)
 		fmt.Print("\nI hitted: ", cardHitted, " - Value: ", cardHitted.BlackjackScore(), "\n")
 		fmt.Print("My current score: ", score, "\n\n")
 		time.Sleep(time.Second)
@@ -47,7 +47,7 @@ func DealerPlay(round *game.Game) {
 		}
 	}
 	if score > 21 {
-		fmt.Print("Dealer BUSTED ", round.Dealer.Score(), "\n")
+		fmt.Print("Dealer BUSTED ", bjackplayer.Score(round.Dealer.Hand), "\n")
 		round.Dealer.Hand = []deck.Card{}
 	}
 }
