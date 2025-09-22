@@ -1,3 +1,12 @@
-Bonus 3
-Bonus 5
 Bonus 6
+
+Feature:
+Bonus 5 completed - NPC AI: The AI acts based on the dealer’s first (and visible) card, defining a level of threat according to the card’s score. Then, it analyzes its own score in each round and calculates the probability of busting. Based on this, it generates a fear level, taking into account its intelligence and the previously calculated values.
+It decides whether to hit based on the fear level and a random value representing courage. If the courage is greater than the fear, then it hits. The AI also checks if the score is already 21.
+
+Bugfixes:
+Fixed a problem where players with zero bets could choose Double Down;
+Fixed a problem where players could split multiple times;
+Fixed a problem where players couldn't hit for the splitted hand;
+Natural blackjacks now will win against common blackjacks;
+Splitted hands now appears at scoreboard.

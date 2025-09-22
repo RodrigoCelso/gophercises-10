@@ -179,10 +179,10 @@ func WithMultipleDeckSize(size int) option {
 	}
 }
 
-func PopCard(cards *Deck) Card {
-	cardsLen := len(*cards)
-	cardOut := (*cards)[cardsLen-1]
-	*cards = (*cards)[:cardsLen-1]
+func (d *Deck) PopCard() Card {
+	cardsLen := len(*d)
+	cardOut := (*d)[cardsLen-1]
+	*d = (*d)[:cardsLen-1]
 	return cardOut
 }
 
@@ -196,6 +196,27 @@ func (d Deck) Shuffle() Deck {
 func (c *Card) BlackjackScore() int {
 	score, _ := c.BlackjackScoreWithAce()
 	return score
+}
+
+func (d *Deck) BlackjackScore() int {
+	var aces uint8
+	var scoreValue int
+	for _, card := range *d {
+		cardValue, isAce := card.BlackjackScoreWithAce()
+		scoreValue += cardValue
+		if isAce {
+			aces++
+		}
+	}
+	for range aces {
+		if scoreValue > 21 {
+			scoreValue -= 10
+			aces--
+		} else {
+			aces--
+		}
+	}
+	return scoreValue
 }
 
 func (c *Card) BlackjackScoreWithAce() (int, bool) {

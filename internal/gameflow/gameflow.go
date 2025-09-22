@@ -26,15 +26,18 @@ func MainMenu() {
 		case 0:
 			return
 		case 1:
+			// NPC quantity
 			fmt.Println("How many players (non playable)?")
 			var npcQuantityChoice uint8
 			fmt.Scanln(&npcQuantityChoice)
 
+			// User quantity
 			fmt.Println("How many users (playable)?")
 			var playersQuantityChoice uint8
 			fmt.Scanln(&playersQuantityChoice)
 			var users []*bjackplayer.Player
 
+			// Users Login
 			for range playersQuantityChoice {
 				var playerName string
 				var playerChips int
@@ -42,15 +45,14 @@ func MainMenu() {
 				fmt.Print("Name: ")
 				fmt.Scanln(&playerName)
 
-				fmt.Println(playerName)
-
 				playerChips, err := controller.GetChips(playerName)
 				if err != nil {
 					fmt.Println("Error:", err)
 				}
-
-				users = append(users, &bjackplayer.Player{Name: playerName, Chips: playerChips, Playable: true})
+				users = append(users, &bjackplayer.Player{Name: playerName, Chips: playerChips})
 			}
+
+			// Create match
 			match = game.New(int(npcQuantityChoice), users)
 			NewGame()
 		case 2:
@@ -62,7 +64,7 @@ func MainMenu() {
 			var playerChips int
 			fmt.Scanln(&playerChips)
 
-			err := controller.InsertChips(userName, playerChips)
+			err := controller.InsertRemoveChips(userName, playerChips)
 			if err != nil {
 				fmt.Println("Error:", err)
 			}
@@ -90,11 +92,12 @@ func MainMenu() {
 }
 
 func NewGame() {
-	// Precisa ver quem é o jogador e suas fichas
-	for _, p := range match.Players {
-		if p.Chips > 0 && p.Playable {
+	// Users bet
+	for _, p := range match.Users {
+		if p.Chips > 0 {
 			fmt.Printf("Make your bet %s: (chips available: %d)\n", p.Name, p.Chips)
 			var pBet int
+
 			for {
 				fmt.Print(p.Name, " - ")
 				fmt.Scanf("%d\n", &pBet)
@@ -109,7 +112,7 @@ func NewGame() {
 				}
 				break
 			}
-			p.Bet = pBet
+			p.MainHand.Bet = pBet
 		}
 	}
 
@@ -120,21 +123,25 @@ func NewGame() {
 
 	// Dealer reveals first card
 	fmt.Println("this is my first card:")
-	fmt.Print(flipCard(match.Dealer, 1), "\n\n")
+	dealerFirst := flipCard(match.Dealer, 1)
+	fmt.Print(dealerFirst, "\n\n")
 	time.Sleep(FOCUS_TIME)
 
 	// Players turn
-	for _, p := range match.Players {
-		if p.Playable {
-			playerPlay(match, p)
-			time.Sleep(FOCUS_TIME)
-		}
+	for _, u := range match.Users {
+		playerPlay(match, u)
+		time.Sleep(FOCUS_TIME)
+	}
+
+	// NPCs turn
+	for _, n := range match.NPCs {
+		NPCPlay(match, n)
+		time.Sleep(FOCUS_TIME)
 	}
 
 	// Dealer reveals second card
-	fmt.Println("this is my second card:")
-	fmt.Print(flipCard(match.Dealer, 2), "\n\n")
-	fmt.Println("my current hand is:\n", match.Dealer)
+	fmt.Println("this is all my current cards:")
+	fmt.Print(match.Dealer, "\n\n")
 	time.Sleep(FOCUS_TIME)
 
 	// Dealer turn
@@ -142,5 +149,5 @@ func NewGame() {
 	time.Sleep(FOCUS_TIME)
 
 	// Decide winners
-	settleWinner(match.Players, match.Dealer)
+	settleWinner(match.Users, match.NPCs, match.Dealer)
 }

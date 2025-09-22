@@ -40,7 +40,7 @@ func GetChips(playerName string) (int, error) {
 	return pChips, nil
 }
 
-func InsertChips(playerName string, chips int) error {
+func InsertRemoveChips(playerName string, chips int) error {
 	db, err := database.ConnectDB()
 	if err != nil {
 		return fmt.Errorf("a problem occured while oppening the database: %w", err)

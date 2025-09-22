@@ -9,66 +9,91 @@ import (
 	"github.com/RodrigoCelso/gophercises-10/internal/controller"
 )
 
-func settleWinner(players []*bjackplayer.Player, dealer *bjackplayer.Player) {
-	dealerScore := bjackplayer.Score(dealer.Hand)
-	for _, p := range players {
-		pScore := bjackplayer.Score(p.Hand)
-		if (pScore == dealerScore) || (p.State == dealer.State && !(p.State == bjackplayer.Default && dealer.State == bjackplayer.Default)) {
-			// tie
-			fmt.Println(dealer.Name, "and", p.Name, "tied")
-			if p.Playable {
-				bucketKey := p.Name + " - " + time.Now().Format("02/01/2006 15:04:05")
-				bucketValue := "Tie - Total: " + strconv.Itoa(p.Chips) + " chips"
-
-				err := controller.NewScoreboardEntry(bucketKey, bucketValue)
-				if err != nil {
-					fmt.Println("Error:", err)
-					return
-				}
-			}
-			continue
+func saveScore(playerName string, playerChips int, playerBet int) error {
+	bucketKey := playerName + " - " + time.Now().Format("02/01/2006 15:04:05")
+	var bucketValue string
+	if playerBet == 0 {
+		bucketValue = "Tie - Total: " + strconv.Itoa(playerChips) + " chips"
+	} else {
+		err := controller.InsertRemoveChips(playerName, playerBet)
+		if err != nil {
+			return fmt.Errorf("couldn't update player chips: %w", err)
 		}
-
-		if dealer.State == bjackplayer.Blackjack || dealerScore > pScore {
-			// dealer won
-			fmt.Println(dealer.Name, "won against", p.Name)
-			if p.Playable {
-				err := controller.InsertChips(p.Name, -p.Bet)
-				if err != nil {
-					fmt.Println("Error:", err)
-					return
-				}
-
-				bucketKey := p.Name + " - " + time.Now().Format("02/01/2006 15:04:05")
-				bucketValue := "Lose - paid " + strconv.Itoa(p.Bet) + " Chips - Total: " + strconv.Itoa(p.Chips-p.Bet) + " chips"
-
-				err = controller.NewScoreboardEntry(bucketKey, bucketValue)
-				if err != nil {
-					fmt.Println("Error:", err)
-					return
-				}
-			}
-			continue
-		}
-
-		// dealer lost
-		fmt.Println(p.Name, "won against", dealer.Name)
-		if p.Playable {
-			err := controller.InsertChips(p.Name, p.Bet)
-			if err != nil {
-				fmt.Println("Error:", err)
-				return
-			}
-
-			bucketKey := p.Name + " - " + time.Now().Format("02/01/2006 15:04:05")
-			bucketValue := "Win - Gained " + strconv.Itoa(p.Bet) + " Chips - Total: " + strconv.Itoa(p.Chips+p.Bet) + " chips"
-
-			err = controller.NewScoreboardEntry(bucketKey, bucketValue)
-			if err != nil {
-				fmt.Println("Error:", err)
-				return
-			}
-		}
-
+		bucketValue = "Lose - paid " + strconv.Itoa(playerBet) + " Chips - Total: " + strconv.Itoa(playerChips+playerBet) + " chips"
 	}
+
+	err := controller.NewScoreboardEntry(bucketKey, bucketValue)
+	if err != nil {
+		return fmt.Errorf("couldn't write into database: %w", err)
+	}
+	return nil
+}
+
+func settleUsers(dealer *bjackplayer.Player, users []*bjackplayer.Player) error {
+	dealerScore := dealer.MainHand.Cards.BlackjackScore()
+	for _, u := range users {
+		currentHand := &u.MainHand
+		for {
+			uScore := u.MainHand.Cards.BlackjackScore()
+
+			if uScore == dealerScore && u.MainHand.NaturalBlackjack == dealer.MainHand.NaturalBlackjack {
+				// tied
+				fmt.Printf("%s and %s tied (user %dx%d dealer)\n", u.Name, dealer.Name, uScore, dealerScore)
+				err := saveScore(u.Name, u.Chips, 0)
+				if err != nil {
+					return fmt.Errorf("couldn't save the score: %w", err)
+				}
+			} else if dealerScore > uScore || dealer.MainHand.NaturalBlackjack && !currentHand.NaturalBlackjack {
+				// player lost
+				fmt.Printf("%s won against %s (dealer %dx%d user)\n", dealer.Name, u.Name, dealerScore, uScore)
+				err := saveScore(u.Name, u.Chips, -currentHand.Bet)
+				if err != nil {
+					return fmt.Errorf("couldn't save the score: %w", err)
+				}
+			} else {
+				// player won
+				fmt.Printf("%s won against %s (user %dx%d dealer)\n", u.Name, dealer.Name, uScore, dealerScore)
+				err := saveScore(u.Name, u.Chips, currentHand.Bet)
+				if err != nil {
+					return fmt.Errorf("couldn't save the score: %w", err)
+				}
+			}
+
+			if u.Splitted {
+				if currentHand == &u.SplitHand {
+					break
+				}
+				currentHand = &u.SplitHand
+			} else {
+				break
+			}
+		}
+	}
+	return nil
+}
+
+func settleNPCs(dealer *bjackplayer.Player, npcs []*bjackplayer.Player) {
+	dealerScore := dealer.MainHand.Cards.BlackjackScore()
+	for _, n := range npcs {
+		nScore := n.MainHand.Cards.BlackjackScore()
+		if nScore == dealerScore && n.MainHand.NaturalBlackjack == dealer.MainHand.NaturalBlackjack {
+			// tie
+			fmt.Printf("%s and %s tied (player %dx%d dealer)\n", n.Name, dealer.Name, nScore, dealerScore)
+			continue
+		}
+
+		if dealerScore > nScore || dealer.MainHand.NaturalBlackjack && !n.MainHand.NaturalBlackjack {
+			// npc lost
+			fmt.Printf("%s won against %s (dealer %dx%d player)\n", dealer.Name, n.Name, dealerScore, nScore)
+			continue
+		}
+
+		// npc won
+		fmt.Printf("%s won against %s (player %dx%d dealer)\n", n.Name, dealer.Name, nScore, dealerScore)
+	}
+}
+
+func settleWinner(users []*bjackplayer.Player, npcs []*bjackplayer.Player, dealer *bjackplayer.Player) {
+	settleUsers(dealer, users)
+	settleNPCs(dealer, npcs)
 }

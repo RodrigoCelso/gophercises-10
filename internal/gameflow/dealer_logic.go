@@ -9,45 +9,65 @@ import (
 	"github.com/RodrigoCelso/gophercises-10/internal/game"
 )
 
-func dealCards(round *game.Game) {
-	for _, p := range round.Players {
-		p.Hit(&round.Shoe)
-		p.Hit(&round.Shoe)
-		pScore := bjackplayer.Score(p.Hand)
-		if pScore == 21 {
+func dealCards(match *game.Game) {
+	// Deal users cards
+	for _, u := range match.Users {
+		u.Hit(&match.Shoe, &u.MainHand)
+		u.Hit(&match.Shoe, &u.MainHand)
+		uScore := u.MainHand.Cards.BlackjackScore()
+		if uScore == 21 {
 			// Natural Blackjack
-			p.State = bjackplayer.Blackjack
+			u.MainHand.NaturalBlackjack = true
 		}
-		if pScore > round.PlayerMaxScore {
-			round.PlayerMaxScore = pScore
+		// Update Player Max Score except for natural blackjacks
+		if uScore > match.PlayerMaxScore && !u.MainHand.NaturalBlackjack {
+			match.PlayerMaxScore = uScore
 		}
 	}
-	round.Dealer.Hit(&round.Shoe)
-	round.Dealer.Hit(&round.Shoe)
-	if bjackplayer.Score(round.Dealer.Hand) == 21 {
+
+	// Deal NPCs cards
+	for _, n := range match.NPCs {
+		n.Hit(&match.Shoe, &n.MainHand)
+		n.Hit(&match.Shoe, &n.MainHand)
+		nScore := n.MainHand.Cards.BlackjackScore()
+		if nScore == 21 {
+			n.MainHand.NaturalBlackjack = true
+		}
+		// Update Player Max Score except for natural blackjacks
+		if nScore > match.PlayerMaxScore && !n.MainHand.NaturalBlackjack {
+			match.PlayerMaxScore = nScore
+		}
+	}
+
+	dealer := match.Dealer
+	// Deal dealer cards
+	dealer.Hit(&match.Shoe, &dealer.MainHand)
+	dealer.Hit(&match.Shoe, &dealer.MainHand)
+	if dealer.MainHand.Cards.BlackjackScore() == 21 {
 		// Natural Blackjack
-		round.Dealer.State = bjackplayer.Blackjack
+		dealer.MainHand.NaturalBlackjack = true
 	}
 }
 
 func flipCard(dealer *bjackplayer.Player, cardNumber int) *deck.Card {
-	return &dealer.Hand[cardNumber-1]
+	return &dealer.MainHand.Cards[cardNumber-1]
 }
 
-func dealerPlay(round *game.Game) {
-	score := bjackplayer.Score(round.Dealer.Hand)
-	for score < 17 || (score < round.PlayerMaxScore && len(round.Players) == 1) {
-		cardHitted := round.Dealer.Hit(&round.Shoe)
-		score = bjackplayer.Score(round.Dealer.Hand)
+func dealerPlay(match *game.Game) {
+	dealer := match.Dealer
+	score := dealer.MainHand.Cards.BlackjackScore()
+	for score < 17 || (score < match.PlayerMaxScore && len(match.Users)+len(match.NPCs) == 1) {
+		cardHitted := dealer.Hit(&match.Shoe, &dealer.MainHand)
+		score = dealer.MainHand.Cards.BlackjackScore()
 		fmt.Print("\nI hitted: ", cardHitted, " - Value: ", cardHitted.BlackjackScore(), "\n")
 		fmt.Print("My current score: ", score, "\n\n")
 		time.Sleep(time.Second)
-		if score > round.PlayerMaxScore {
+		if score > match.PlayerMaxScore {
 			break
 		}
 	}
 	if score > 21 {
-		fmt.Print("Dealer BUSTED ", bjackplayer.Score(round.Dealer.Hand), "\n")
-		round.Dealer.Hand = []deck.Card{}
+		fmt.Print("Dealer BUSTED ", dealer.MainHand.Cards.BlackjackScore(), "\n")
+		dealer.MainHand.Cards = []deck.Card{}
 	}
 }

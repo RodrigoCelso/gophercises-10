@@ -9,37 +9,41 @@ import (
 )
 
 func playerPlay(match *game.Game, p *bjackplayer.Player) {
-	currentHand := &p.Hand
+	currentHand := &p.MainHand
 	splitOptionTxt := "4. Split\n"
 	doubleDownOptionTxt := "3. Double down\n"
-	if (*currentHand)[0].Value != (*currentHand)[1].Value {
+	if currentHand.Cards[0].Value != currentHand.Cards[1].Value {
 		splitOptionTxt = ""
 	}
-	if p.Bet*2 > p.Chips {
+	if currentHand.Bet*2 > p.Chips || currentHand.Bet == 0 {
 		doubleDownOptionTxt = ""
 	}
 	fmt.Println("=====================\n", p, "\n=====================")
 	for {
-		fmt.Printf("Would you like to Hit or Stand? (Current hand score: %d)\n", bjackplayer.Score(*currentHand))
+		fmt.Printf("Would you like to Hit or Stand? (Current hand score: %d)\n", currentHand.Cards.BlackjackScore())
 		fmt.Println("1. Hit\n2. Stand\n" + doubleDownOptionTxt + splitOptionTxt + "5. Check table")
 
 		var playerChoice int
 		fmt.Scanf("%d\n", &playerChoice)
 
 		if playerChoice == 1 {
-			cardHitted := p.Hit(&match.Shoe)
+			cardHitted := p.Hit(&match.Shoe, currentHand)
 			fmt.Print("\nYou hitted: ", cardHitted, " - Value: ", cardHitted.BlackjackScore(), "\n\n")
-			if bjackplayer.Score(p.Hand) > 21 {
-				fmt.Print("BUSTED! ", bjackplayer.Score(p.Hand), "\n")
-				p.Hand = []deck.Card{}
+			if currentHand.Cards.BlackjackScore() > 21 {
+				fmt.Print("BUSTED! ", currentHand.Cards.BlackjackScore(), "\n")
+				p.MainHand.Cards = []deck.Card{}
+				if p.SplitHand.Cards != nil && currentHand != &p.SplitHand {
+					currentHand = &p.SplitHand
+					continue
+				}
 				break
 			}
-			pScore := bjackplayer.Score(p.Hand)
+			pScore := currentHand.Cards.BlackjackScore()
 			if pScore > match.PlayerMaxScore {
 				match.PlayerMaxScore = pScore
 			}
 		} else if playerChoice == 2 {
-			if p.SplitHand != nil && currentHand != &p.SplitHand {
+			if p.SplitHand.Cards != nil && currentHand != &p.SplitHand {
 				currentHand = &p.SplitHand
 				continue
 			}
@@ -48,14 +52,14 @@ func playerPlay(match *game.Game, p *bjackplayer.Player) {
 			// Double down
 			if doubleDownOptionTxt != "" {
 				fmt.Println("DOUBLE DOWN!")
-				p.Bet *= 2
-				cardHitted := p.Hit(&match.Shoe)
+				currentHand.Bet *= 2
+				cardHitted := p.Hit(&match.Shoe, currentHand)
 				fmt.Print("\nYou hitted: ", cardHitted, " - Value: ", cardHitted.BlackjackScore(), "\n\n")
-				if bjackplayer.Score(p.Hand) > 21 {
-					fmt.Print("BUSTED! ", bjackplayer.Score(p.Hand), "\n")
-					p.Hand = []deck.Card{}
+				if currentHand.Cards.BlackjackScore() > 21 {
+					fmt.Print("BUSTED! ", currentHand.Cards.BlackjackScore(), "\n")
+					p.MainHand.Cards = []deck.Card{}
 				}
-				if p.SplitHand != nil && currentHand != &p.SplitHand {
+				if p.SplitHand.Cards != nil && currentHand != &p.SplitHand {
 					currentHand = &p.SplitHand
 					continue
 				}
@@ -64,9 +68,12 @@ func playerPlay(match *game.Game, p *bjackplayer.Player) {
 		} else if playerChoice == 4 {
 			// Split
 			if splitOptionTxt != "" {
-				handSize := len(p.Hand)
-				p.SplitHand = p.Hand[handSize>>1:]
-				p.Hand = p.Hand[:handSize>>1]
+				splitOptionTxt = ""
+				handSize := len(p.MainHand.Cards)
+				p.SplitHand.Bet = p.MainHand.Bet >> 1
+				p.MainHand.Bet -= p.SplitHand.Bet
+				p.SplitHand.Cards = p.MainHand.Cards[handSize>>1:]
+				p.MainHand.Cards = p.MainHand.Cards[:handSize>>1]
 			}
 		} else if playerChoice == 5 {
 			checkTable(match, p)
@@ -76,7 +83,7 @@ func playerPlay(match *game.Game, p *bjackplayer.Player) {
 			continue
 		}
 	}
-	fmt.Print("Final Score: ", bjackplayer.Score(p.Hand), "\n=====================\n")
+	fmt.Print("Final Score: ", currentHand.Cards.BlackjackScore(), "\n=====================\n")
 }
 
 func checkTable(match *game.Game, pCall *bjackplayer.Player) {
@@ -84,7 +91,7 @@ func checkTable(match *game.Game, pCall *bjackplayer.Player) {
 	fmt.Println(match.Dealer)
 	fmt.Println("=====================")
 	fmt.Println("\n=====================")
-	for _, p := range match.Players {
+	for _, p := range match.Users {
 		fmt.Println(p)
 		if p == pCall {
 			fmt.Println("======= You ^ =======")
