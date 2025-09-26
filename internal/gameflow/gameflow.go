@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/RodrigoCelso/gophercises-10/internal/bjackplayer"
 	"github.com/RodrigoCelso/gophercises-10/internal/controller"
 	"github.com/RodrigoCelso/gophercises-10/internal/game"
 )
 
 const FOCUS_TIME = 2 * time.Second
+const MAX_PLAYERS = 5
 
 var match *game.Game
 
@@ -26,16 +26,15 @@ func MainMenu() {
 		case 0:
 			return
 		case 1:
-			// NPC quantity
-			fmt.Println("How many players (non playable)?")
-			var npcQuantityChoice uint8
-			fmt.Scanln(&npcQuantityChoice)
-
 			// User quantity
-			fmt.Println("How many users (playable)?")
+			fmt.Println("How many users (maximum of 5 players by game)?")
 			var playersQuantityChoice uint8
 			fmt.Scanln(&playersQuantityChoice)
-			var users []*bjackplayer.Player
+			var users []*game.Player
+
+			if len(users) > MAX_PLAYERS {
+				users = users[:MAX_PLAYERS]
+			}
 
 			// Users Login
 			for range playersQuantityChoice {
@@ -43,17 +42,40 @@ func MainMenu() {
 				var playerChips int
 
 				fmt.Print("Name: ")
-				fmt.Scanln(&playerName)
+				fmt.Scanf("%s\n", &playerName)
 
 				playerChips, err := controller.GetChips(playerName)
 				if err != nil {
 					fmt.Println("Error:", err)
 				}
-				users = append(users, &bjackplayer.Player{Name: playerName, Chips: playerChips})
+				users = append(users, &game.Player{Name: playerName, Chips: playerChips})
+			}
+
+			// NPC quantity
+			var npcQuantity int
+			var npcIntelligence float32
+			if len(users) < MAX_PLAYERS {
+				npcQuantity = MAX_PLAYERS - len(users)
+				fmt.Println("Set NPC's intelligence in percentage: ")
+				fmt.Scanf("%f\n", &npcIntelligence)
+
+				// Clamp to 0-100%
+				if npcIntelligence < 0 {
+					npcIntelligence = 0
+				}
+				if npcIntelligence > 100 {
+					npcIntelligence = 100
+				}
 			}
 
 			// Create match
-			match = game.New(int(npcQuantityChoice), users)
+			match = game.New(
+				game.WithShoeDecks(4),
+				game.WithUsers(users),
+				game.WithNPCs(npcQuantity),
+				game.WithNPCIntelligence(npcIntelligence),
+				game.WithTrickster(0.2),
+			)
 			NewGame()
 		case 2:
 			fmt.Print("Player name: ")
@@ -135,7 +157,11 @@ func NewGame() {
 
 	// NPCs turn
 	for _, n := range match.NPCs {
-		NPCPlay(match, n)
+		if n.Trickster {
+			NPCTricksterPlay(match, n)
+		} else {
+			NPCPlay(match, n)
+		}
 		time.Sleep(FOCUS_TIME)
 	}
 

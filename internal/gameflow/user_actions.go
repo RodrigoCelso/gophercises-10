@@ -3,12 +3,11 @@ package gameflow
 import (
 	"fmt"
 
-	"github.com/RodrigoCelso/gophercises-10/internal/bjackplayer"
 	"github.com/RodrigoCelso/gophercises-10/internal/deck"
 	"github.com/RodrigoCelso/gophercises-10/internal/game"
 )
 
-func playerPlay(match *game.Game, p *bjackplayer.Player) {
+func playerPlay(match *game.Game, p *game.Player) {
 	currentHand := &p.MainHand
 	splitOptionTxt := "4. Split\n"
 	doubleDownOptionTxt := "3. Double down\n"
@@ -27,7 +26,7 @@ func playerPlay(match *game.Game, p *bjackplayer.Player) {
 		fmt.Scanf("%d\n", &playerChoice)
 
 		if playerChoice == 1 {
-			cardHitted := p.Hit(&match.Shoe, currentHand)
+			cardHitted := currentHand.Hit(match)
 			fmt.Print("\nYou hitted: ", cardHitted, " - Value: ", cardHitted.BlackjackScore(), "\n\n")
 			if currentHand.Cards.BlackjackScore() > 21 {
 				fmt.Print("BUSTED! ", currentHand.Cards.BlackjackScore(), "\n")
@@ -53,7 +52,7 @@ func playerPlay(match *game.Game, p *bjackplayer.Player) {
 			if doubleDownOptionTxt != "" {
 				fmt.Println("DOUBLE DOWN!")
 				currentHand.Bet *= 2
-				cardHitted := p.Hit(&match.Shoe, currentHand)
+				cardHitted := currentHand.Hit(match)
 				fmt.Print("\nYou hitted: ", cardHitted, " - Value: ", cardHitted.BlackjackScore(), "\n\n")
 				if currentHand.Cards.BlackjackScore() > 21 {
 					fmt.Print("BUSTED! ", currentHand.Cards.BlackjackScore(), "\n")
@@ -86,7 +85,7 @@ func playerPlay(match *game.Game, p *bjackplayer.Player) {
 	fmt.Print("Final Score: ", currentHand.Cards.BlackjackScore(), "\n=====================\n")
 }
 
-func checkTable(match *game.Game, pCall *bjackplayer.Player) {
+func checkTable(match *game.Game, pCall *game.Player) {
 	fmt.Println("=====================")
 	fmt.Println(match.Dealer)
 	fmt.Println("=====================")

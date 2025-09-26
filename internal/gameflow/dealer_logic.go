@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/RodrigoCelso/gophercises-10/internal/bjackplayer"
 	"github.com/RodrigoCelso/gophercises-10/internal/deck"
 	"github.com/RodrigoCelso/gophercises-10/internal/game"
 )
@@ -12,8 +11,8 @@ import (
 func dealCards(match *game.Game) {
 	// Deal users cards
 	for _, u := range match.Users {
-		u.Hit(&match.Shoe, &u.MainHand)
-		u.Hit(&match.Shoe, &u.MainHand)
+		u.MainHand.Hit(match)
+		u.MainHand.Hit(match)
 		uScore := u.MainHand.Cards.BlackjackScore()
 		if uScore == 21 {
 			// Natural Blackjack
@@ -27,8 +26,8 @@ func dealCards(match *game.Game) {
 
 	// Deal NPCs cards
 	for _, n := range match.NPCs {
-		n.Hit(&match.Shoe, &n.MainHand)
-		n.Hit(&match.Shoe, &n.MainHand)
+		n.MainHand.Hit(match)
+		n.MainHand.Hit(match)
 		nScore := n.MainHand.Cards.BlackjackScore()
 		if nScore == 21 {
 			n.MainHand.NaturalBlackjack = true
@@ -41,15 +40,15 @@ func dealCards(match *game.Game) {
 
 	dealer := match.Dealer
 	// Deal dealer cards
-	dealer.Hit(&match.Shoe, &dealer.MainHand)
-	dealer.Hit(&match.Shoe, &dealer.MainHand)
+	dealer.MainHand.Hit(match)
+	dealer.MainHand.Hit(match)
 	if dealer.MainHand.Cards.BlackjackScore() == 21 {
 		// Natural Blackjack
 		dealer.MainHand.NaturalBlackjack = true
 	}
 }
 
-func flipCard(dealer *bjackplayer.Player, cardNumber int) *deck.Card {
+func flipCard(dealer *game.Player, cardNumber int) *deck.Card {
 	return &dealer.MainHand.Cards[cardNumber-1]
 }
 
@@ -57,7 +56,7 @@ func dealerPlay(match *game.Game) {
 	dealer := match.Dealer
 	score := dealer.MainHand.Cards.BlackjackScore()
 	for score < 17 || (score < match.PlayerMaxScore && len(match.Users)+len(match.NPCs) == 1) {
-		cardHitted := dealer.Hit(&match.Shoe, &dealer.MainHand)
+		cardHitted := dealer.MainHand.Hit(match)
 		score = dealer.MainHand.Cards.BlackjackScore()
 		fmt.Print("\nI hitted: ", cardHitted, " - Value: ", cardHitted.BlackjackScore(), "\n")
 		fmt.Print("My current score: ", score, "\n\n")

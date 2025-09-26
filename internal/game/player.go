@@ -1,4 +1,4 @@
-package bjackplayer
+package game
 
 import (
 	"fmt"
@@ -20,7 +20,7 @@ type PlayerHand struct {
 	NaturalBlackjack bool
 }
 
-func New(name string) *Player {
+func NewPlayer(name string) *Player {
 	return &Player{Name: name}
 }
 
@@ -44,8 +44,21 @@ func (p *Player) String() string {
 	return profile
 }
 
-func (p *Player) Hit(shoe *deck.Deck, hand *PlayerHand) deck.Card {
-	hitCard := (*shoe).PopCard()
-	hand.Cards = append(hand.Cards, hitCard)
+func (h *PlayerHand) Hit(match *Game) deck.Card {
+	hitCard := match.Shoe.PopCard()
+	match.CardCounter += cardCount(hitCard)
+	h.Cards = append(h.Cards, hitCard)
 	return hitCard
+}
+
+func cardCount(card deck.Card) int {
+	switch card.BlackjackScore() {
+	case 2, 3, 4, 5, 6:
+		return 1
+	case 7, 8, 9:
+		return 0
+	case 10, 11:
+		return -1
+	}
+	return 0
 }

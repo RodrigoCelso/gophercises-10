@@ -1,33 +1,93 @@
 package game
 
 import (
+	"fmt"
+	"math/rand"
 	"strconv"
 
-	"github.com/RodrigoCelso/gophercises-10/internal/bjackplayer"
 	"github.com/RodrigoCelso/gophercises-10/internal/deck"
 )
 
 type Game struct {
-	Shoe            deck.Deck
-	DiscardTray     deck.Deck
-	Dealer          *bjackplayer.Player
-	Users           []*bjackplayer.Player
-	NPCs            []*bjackplayer.Player
-	NPCIntelligence float64
-	PlayerMaxScore  int
+	Shoe               deck.Deck
+	ShoeDecks          int
+	DiscardTray        deck.Deck
+	Dealer             *Player
+	Users              []*Player
+	NPCs               []*NPCPlayer
+	NPCIntelligence    float32
+	NPCTricksterChance float32
+	CardCounter        int
+	PlayerMaxScore     int
 }
 
-func New(npcsQuantity int, users []*bjackplayer.Player) *Game {
-	var npcs []*bjackplayer.Player
-	for idx := range npcsQuantity {
-		npcs = append(npcs, bjackplayer.New("Player_"+strconv.Itoa(idx)))
-	}
+type GameOption func(Game) Game
 
-	return &Game{
-		Shoe:            *deck.New(deck.WithMultipleDeckSize(4), deck.WithShuffle()),
-		Dealer:          bjackplayer.New("Dealer"),
-		Users:           users,
-		NPCs:            npcs,
-		NPCIntelligence: 1,
+func New(options ...GameOption) *Game {
+	newGame := &Game{
+		ShoeDecks:          1,
+		Dealer:             NewPlayer("Dealer"),
+		NPCIntelligence:    1,
+		NPCTricksterChance: 0,
+	}
+	for _, option := range options {
+		*newGame = option(*newGame)
+	}
+	if newGame.Shoe == nil {
+		fmt.Println("shoe nil")
+		newGame.Shoe = *deck.New(deck.WithShuffle())
+	}
+	return newGame
+}
+
+func WithShoeDecks(size int) GameOption {
+	return func(g Game) Game {
+		fmt.Println("shoe with decks")
+		g.Shoe = *deck.New(deck.WithMultipleDeckSize(size), deck.WithShuffle())
+		g.ShoeDecks = size
+		return g
+	}
+}
+
+func WithUsers(users []*Player) GameOption {
+	return func(g Game) Game {
+		g.Users = users
+		return g
+	}
+}
+
+func WithNPCs(npcQuantity int) GameOption {
+	return func(g Game) Game {
+		var npcs []*NPCPlayer
+		for idx := range npcQuantity {
+			isTrickster := rand.Float32() < g.NPCTricksterChance
+			npcs = append(npcs, NewNPC("Player_"+strconv.Itoa(idx), isTrickster))
+		}
+		g.NPCs = npcs
+		return g
+	}
+}
+
+func WithNPCIntelligence(intelligence float32) GameOption {
+	return func(g Game) Game {
+		g.NPCIntelligence = intelligence
+		return g
+	}
+}
+
+func WithTrickster(chance float32) GameOption {
+	return func(g Game) Game {
+		if chance < 0 {
+			chance = 0
+		}
+		g.NPCTricksterChance = chance
+
+		// Define tricksters if npcs have been already created
+		if g.NPCs != nil {
+			for _, npc := range g.NPCs {
+				npc.Trickster = rand.Float32() < g.NPCTricksterChance
+			}
+		}
+		return g
 	}
 }

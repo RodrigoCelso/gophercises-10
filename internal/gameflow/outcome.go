@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/RodrigoCelso/gophercises-10/internal/bjackplayer"
 	"github.com/RodrigoCelso/gophercises-10/internal/controller"
+	"github.com/RodrigoCelso/gophercises-10/internal/game"
 )
 
 func saveScore(playerName string, playerChips int, playerBet int) error {
@@ -29,7 +29,7 @@ func saveScore(playerName string, playerChips int, playerBet int) error {
 	return nil
 }
 
-func settleUsers(dealer *bjackplayer.Player, users []*bjackplayer.Player) error {
+func settleUsers(dealer *game.Player, users []*game.Player) error {
 	dealerScore := dealer.MainHand.Cards.BlackjackScore()
 	for _, u := range users {
 		currentHand := &u.MainHand
@@ -72,7 +72,7 @@ func settleUsers(dealer *bjackplayer.Player, users []*bjackplayer.Player) error 
 	return nil
 }
 
-func settleNPCs(dealer *bjackplayer.Player, npcs []*bjackplayer.Player) {
+func settleNPCs(dealer *game.Player, npcs []*game.NPCPlayer) {
 	dealerScore := dealer.MainHand.Cards.BlackjackScore()
 	for _, n := range npcs {
 		nScore := n.MainHand.Cards.BlackjackScore()
@@ -93,7 +93,7 @@ func settleNPCs(dealer *bjackplayer.Player, npcs []*bjackplayer.Player) {
 	}
 }
 
-func settleWinner(users []*bjackplayer.Player, npcs []*bjackplayer.Player, dealer *bjackplayer.Player) {
+func settleWinner(users []*game.Player, npcs []*game.NPCPlayer, dealer *game.Player) {
 	settleUsers(dealer, users)
 	settleNPCs(dealer, npcs)
 }
